@@ -1,3 +1,5 @@
+
+```
   ___                     _   __        
  / _ \                   (_) / _|       
 / /_\ \ ____ _   _  _ __  _ | |_  _   _ 
@@ -6,8 +8,7 @@
 \_| |_//___| \__,_||_|   |_||_|   \__, |
                                    __/ |
                                   |___/ 
-
-
+```
 
 A brief and catchy title that describes the purpose of the project.
 Description
