@@ -15,13 +15,6 @@ Azurify aims to classify the pathogencity of small genomic variants by leveragin
 Azurify aggregates data from CiVIC, ClinVar, gnomAD, COSMIC, KEGG, Pubmed and Uniprot to create a feature set that is combined with over 15,000 clinical classifications to create a model that can classify small variants (SNVs & Indels < 50bp).
 The output classes being pathogenic, Likely pathogenic, uncertain significance (VUS), likely benign, and benign. 
 
-
-    Installation
-    Usage
-    Documentation
-    Contributing
-    License
-
 ## Installation
 
 Installation of Azurify and its dependencies are made easy and can be found within the setup.py file. Any dependencies associated with model and figure generation are outside of Azurify and will need to be installed manually.
@@ -30,9 +23,20 @@ git clone https://github.com/faryabiLab/Azurify.git
 cd Azurify
 python setup.py
 ```
-bash
+## Usage
 
-pip install -r requirements.txt
+```
+python azurify.py -i /path/to/input.tsv -o /path/to/output.tsv
+```
+Azurify expects the following columns as input: CHROM, POS, REF, ALT, FAF, GENE, PCHANGE, EFFECT, EXON_Rank. All values can be derived when annotating a VCF with [snpEff](https://pcingola.github.io/SnpEff/snpeff/introduction/), but native VCF/TSV support for bed-like files is to be released shortly.
+
+Example Input:
+
+|CHROM|POS|REF|ALT|FAF|GENE|PCHANGE|EFFECT|EXON_Rank|
+|:----|:----|:----|:----|:----|:----|:----|:----|:----|
+|chr7|66993288|C|T|50.85714286|SBDS|p.Val130Met|missense_variant|3|
+|chr4|1961074|G|A|41.69453735|WHSC1|p.Glu1099Lys|missense_variant|18|
+|chr12|57102878|T|C|32.51928021|STAT6|p.Asp419Gly|missense_variant|12|
 
 Usage
 
@@ -57,7 +61,7 @@ We would also love to include training data beyond the borders of our instituion
 ## License
 Azurify classifies the pathogencity of small genomic variants using 
 predictive machine learning through clinically relevant features.
-Copyright (C) 2024  Ashkan Bigdeli
+Copyright (C) 2024 Ashkan Bigdeli
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
