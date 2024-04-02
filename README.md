@@ -47,7 +47,7 @@ Documentation
 Link to or include documentation for the project. This can be in the form of inline comments in the code, a separate documentation file, or a link to an external documentation site.
 Contributing
 
-## A note to Users
+## The Azurify Project
 
 In addition to Azurify, we have provided all of the code used to develop as well as evaluate the Azurify model in an effort to ease the accesiblity of variant classification across the field. 
 
@@ -70,4 +70,4 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 [GNU General Public License](https://www.gnu.org/licenses/) for more details.
 
 ## Author
-Please direct questions and bug reports to Ashkan Bigdeli ashkan.bigdeli@pennmedicine.upenn.edu
+Please direct inqueries, questions and bug reports to Ashkan Bigdeli ashkan.bigdeli@pennmedicine.upenn.edu
