@@ -1,0 +1,1 @@
+PCHANGE	GENE	Domain	ClinicalSignificance	EFFECT	Civic_Evidence	FAF	GNOMAD_AC	GNOMAD_AF	EXON_Rank	COSMIC_CNT	MVP_score	Civic_Drug	PMID_COUNT	KEGG
