@@ -12,7 +12,8 @@
 
 Azurify aims to classify the pathogencity of small genomic variants by leveraging machine learning on a feature set of resources that can be used in the clinical classification of somatic variants for the purpose of cancer precision mediicine. 
 
-Azurify aggregates data from CiVIC, ClinVar, gnomAD, COSMIC, KEGG, Pubmed and Uniprot to create a feature set that is combined with over 15,000 clinical classifications to create a model that can classify small variants (SNVs & Indels < 50bp) as being either pathogenic, Likely pathogenic, uncertain significance (VUS), likely benign, and benign. 
+Azurify aggregates data from CiVIC, ClinVar, gnomAD, COSMIC, KEGG, Pubmed and Uniprot to create a feature set that is combined with over 15,000 clinical classifications to create a model that can classify small variants (SNVs & Indels < 50bp).
+The output classes being pathogenic, Likely pathogenic, uncertain significance (VUS), likely benign, and benign. 
 
 
     Installation
@@ -50,7 +51,8 @@ Contributing
 
 In addition to Azurify, we have provided all of the code used to develop as well as evaluate the Azurify model in an effort to ease the accesiblity of variant classification across the field. 
 
-As the Azurify project expands we hope to include more resources as features, automate model generation to keep pace with the field and generate disease specific models. We would also love to include training data beyond the borders of our instituion and seek to provide a framework where variant classification models can be shared to mitigate variability, so collaborators and contributors are encouraged to reach out. 
+As the Azurify project expands we hope to include more resources as features, automate model generation to keep pace with the field and generate disease specific models. 
+We would also love to include training data beyond the borders of our instituion and seek to provide a framework where variant classification models can be shared to mitigate variability, so collaborators and contributors are encouraged to reach out. 
 
 ## License
 Azurify classifies the pathogencity of small genomic variants using 
