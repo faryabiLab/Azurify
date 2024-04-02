@@ -43,7 +43,7 @@ You may include additional columns to the rquired tab-delimtied input and they w
 
 ## Runtime
 
-Azurify annotates 100,000 variants in approximately 30 mminutes of runtime, but can be memory intensive. 
+Azurify annotates 100,000 variants in approximately 30 minutes of runtime. You should expect to need more than 16GB of memory and longer runtimes as record volume increases.
 
 ## The Azurify Project
 
