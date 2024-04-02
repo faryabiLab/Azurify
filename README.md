@@ -38,18 +38,12 @@ Example Input:
 |chr4|1961074|G|A|41.69453735|WHSC1|p.Glu1099Lys|missense_variant|18|
 |chr12|57102878|T|C|32.51928021|STAT6|p.Asp419Gly|missense_variant|12|
 
-Usage
 
-Explain how to use the project. Include examples and sample code snippets if necessary.
+You may include additional columns to the rquired tab-delimtied input and they will be appended to your final results.
 
-python
+## Runtime
 
-python your_script.py
-
-Documentation
-
-Link to or include documentation for the project. This can be in the form of inline comments in the code, a separate documentation file, or a link to an external documentation site.
-Contributing
+Azurify annotates 100,000 variants in approximately 30 mminutes of runtime, but can be memory intensive. 
 
 ## The Azurify Project
 
