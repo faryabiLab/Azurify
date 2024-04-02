@@ -48,7 +48,7 @@ License
 
 Specify the license under which your project is distributed. Common choices include MIT, Apache, GPL, etc.
 
-text
+##License
 
     <one line to give the program's name and a brief idea of what it does.>
     Azurify classifies the pathogencity of small genomic variants using 
@@ -65,12 +65,5 @@ text
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     [GNU General Public License](https://www.gnu.org/licenses/) for more details.
 
-Acknowledgements
-
-Give credit to any resources, libraries, or individuals you used or were inspired by in your project.
-Author
-
-Mention the author or authors of the project.
-Changelog
-
-Keep a record of changes made to the project over time. Include version numbers, dates, and a brief description of each change.
+##Author
+Please direct questions and bug reports to Ashkan Bigdeli ashkan.bigdeli@pennmedicine.upenn.edu
