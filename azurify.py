@@ -1,29 +1,71 @@
-#I need domain, cosmic, clinvar, civic, gnomad, litvar
-#the user should input a file that has a sample string if needed, chrom, start, ref, alt, effect, exon#, 
-
-
-#hardcoded files to remove from git
-domain_file_path = "C:\\dev\\phd\\dt\\resource_data\\uniprot_hg19_domain.txt"
-input_file_path = 'C:\\dev\\phd\\cornell_data\\cornell_withexons_parsed.tsv'
-
-
-#imports
 import pandas as pd
 import argparse
-import catboost
+from catboost import CatBoostClassifier
 import os
-                                                                                                                                                                                                                                                           
-def add_domain(df):
-    domains_df = pd.read_csv(domain_file_path, sep='\t', header=None, names=['chrom', 'start', 'stop', 'name'], dtype={'chrom': str, 'start': int, 'stop': int, 'name': str})
-    result_df = pd.DataFrame(columns=['chrom', 'pos', 'DomainName'])
+from datetime import datetime
+from tqdm import tqdm
 
-                                                                                                                                                                                                                                                              
-def merge_keys(df):
-    for filename in os.listdir('features/'):
-        k = pd.read_csv(('C:\\dev\\phd\\dt\\resource_data\\resdev\\keys\\' + filename), sep='\t',low_memory=False)
-        k.set_index("KEY", inplace = True)
-        df = ex.join(k)
+#global get working directory
+cwd = os.getcwd()
+
+#global progress bar
+progress_bar = tqdm(total=100, desc="Progress", unit="iter")
+
+
+def split_df(df, in_cols):
+    included_df = df[in_cols]
+    excluded_columns = [col for col in df.columns if col not in in_cols]
+    excluded_df = df[excluded_columns]
+    return included_df, excluded_df
+
+def add_domain(df):
+    domain_file_path = os.path.join(cwd, 'utils/uniprot_hg19_domain_parsed.txt')
+    domains_df = pd.read_csv(domain_file_path, sep='\t', header=None, names=['CHROM', 'START', 'STOP', 'Domain'], dtype={'CHROM': str, 'START': int, 'STOP': int, 'Domain': str})
+
+    # Merge based on chromosome and then intersect loci and update dataframe with the appropriate domain
+    merged_df = pd.merge(df, domains_df, on='CHROM', how='left')
+    mask = (merged_df['POS'] >= merged_df['START']) & (merged_df['POS'] <= merged_df['STOP'])
+    df.loc[mask, 'Domain'] = merged_df.loc[mask, 'Domain']
     return(df)
+
+def add_litvar(df):
+    litvar_file_path = os.path.join(cwd, 'utils/litvar_pchanges.txt')
+    litvar_df = pd.read_csv(litvar_file_path, sep='\t', header=None, names=['PCHANGE', 'PMID_COUNT'], dtype={'PCHANGE': str, 'PMID_COUNT': int})
+
+    merged_df = pd.merge(df, litvar_df, on="PCHANGE", how='left')
+    return(merged_df)
+
+def add_kegg(df):
+    kegg_file_path = os.path.join(cwd, 'utils/kegg_pathways.txt')
+    kegg_df = pd.read_csv(kegg_file_path, sep='\t', header=None, names=['GENE'], dtype={'PCHANGE': str})
+
+    kegg_df['IN_KEGG'] = 1
+    plus_kegg = pd.merge(df,kegg_df[['GENE', 'IN_KEGG']],on='GENE', how='left')
+    plus_kegg["KEGG"] = plus_kegg['IN_KEGG'].isnull()*1
+    plus_kegg = plus_kegg.drop(['IN_KEGG'], axis=1)
+    return(plus_kegg)
+
+def merge_keys(df):
+    utilp = os.path.join(cwd, 'utils')
+
+    for filename in os.listdir(utilp):
+        if filename.endswith('_key.tsv.gz'):
+            k = pd.read_csv((os.path.join(utilp, filename)), sep='\t',low_memory=False)
+            k.set_index("KEY", inplace = True)
+            df = df.join(k)
+            progress_bar.update(10)
+    return(df)
+
+def run_azurify(df):
+    azurify = CatBoostClassifier()
+    azurify.load_model((os.path.join(cwd,'models/azurify_hg19.0.99.json')), format='json')
+    
+    template_az = pd.read_csv((os.path.join(cwd ,'models/azurify_template.txt')), sep='\t')
+    df = df[template_az.columns]
+    df = df.infer_objects(copy=False).fillna('-999')
+
+    pred = azurify.predict(data=df)[:,0]
+    return(pred)
 
 def print_ascii():
     print(r"""
@@ -36,96 +78,62 @@ def print_ascii():
                                    __/ |
                                   |___/ 
           """)
+    print("\nVersion 0.99")
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Azurify classifies the pathogencity of small variants based on clinical training labels.")
-    parser.add_argument("-s", "--sample_column_name", required=False, metavar="COLUMN_NAME", type=str, help="Specify the sample column name.")
     parser.add_argument("-l", "--litvar", action="store_true", required=False, help="Should we ping LitVar to pull publications. Takes 1 second per ping")
     parser.add_argument("-i", "--input_file", metavar="FILE_PATH", required=False, type=str, help="Specify the input file.")
-    parser.add_argument("-o", "--output_directory", metavar="DIR_PATH", required=False,type=str, help="Specify the output directory.")
-    parser.add_argument("-f", "--output_filename", metavar="OUTPUT_FILENAME", required=False,type=str, help="Specify the output filename.")
+    parser.add_argument("-o", "--output_filename", metavar="OUTPUT_FILENAME", required=False,type=str, help="Specify the output filename.")
 
     # Parse the command-line arguments
     args = parser.parse_args()
 
     # Check for required arguments
-    if not args.input_file or not args.output_directory or not args.output_filename:
-        parser.error("Input file, output directory, and output filename are required.")
-
+    if not args.input_file or not args.output_filename:
+        parser.error("Input file and Output file are required. Ex. Usage: python azurify.py -i /path/input.tsv -o /path/output.ts")
     return args
 
 def main():
     # Example usage
     print_ascii()
+    progress_bar.update(1)
+    #grab args and files
     args = parse_arguments()
-    print("hello")
-    # Access the values of the arguments
-    #print("Sample Column Name:", args.sample_column_name)
-    #print("Include LitVar:", args.litvar)
-    #print("Input File:", args.input_file)
-    #print("Output Directory:", args.output_directory)
-    #print("Output Filename:", args.output_filename)
+    out_file = args.output_filename
+    uin = args.input_file
+    udf = pd.read_csv(uin, sep='\t',low_memory=False)
+    progress_bar.update(9)
+
+
+    #split the df into columns used/not used by model
+    in_cols=['CHROM','POS','REF','ALT','FAF','GENE','PCHANGE','EFFECT', 'EXON_Rank']
+    adf, xdf = split_df(udf, in_cols)
+
+    #add features
+    ddf = add_domain(adf)
+    progress_bar.update(10)
+    kdf = add_kegg(ddf)
+    progress_bar.update(10)
+    ldf = add_litvar(kdf)
+    progress_bar.update(10)
+
+    #add keyed feeatures
+    mdf = merge_keys(ldf)
+
+
+    #run model
+    preds = run_azurify(mdf)
+
+    mdf['Pathogenicity'] = preds
+
+    final = pd.concat([mdf, xdf], axis=1)
+
+    final.to_csv(out_file, sep="\t", index=False)
+    progress_bar.update(19)
+    progress_bar.close()
+
+    print("Classifications Complete, results written to: " + out_file)
 
 if __name__ == '__main__':
     main()
-
-
-
-
-import time
-#pchange = []
-#pmidc = []
-out="C:\\dev\\phd\\dt\\litvar_pchanges.tab"
-with open(out, 'w+') as o:
-    for i in pchanges:
-        url="https://www.ncbi.nlm.nih.gov/research/bionlp/litvar/api/v1/entity/search/" + i
-        time.sleep(.5)
-        response = requests.get(url)
-        code = response.status_code
-        if code == 200:
-            jr = response.json()
-            pmid_count = jr[0]['pmids_count']
-        else:
-            pmid_count = 0
-        
-        o.write(i + "," + str(pmid_count) + '\n')
-    #pchange.append(i)
-    #pmidc.append(pmid_count)
-#df2 = pd.DataFrame({'PCCHANGE': pchange, 'PMID_COUNT':pmidc})
-print("thats a win")
-
-
-
-#parse the domain file to meet the below specs
-
-domain_file_path = "C:\\dev\\phd\\dt\\resource_data\\uniprot_hg19_domain.txt"
-input_file_path = 'C:\\dev\\phd\\cornell_data\\cornell_withexons_parsed.tsv'
-
-# Read domain data into a DataFrame
-#domains_df = pd.read_csv(domain_file_path, sep='\t', header=None, names=['chrom', 'start', 'stop', 'name'], dtype={'chrom': str, 'start': int, 'stop': int, 'name': str})
-
-# Create a DataFrame to store the results
-#result_df = pd.DataFrame(columns=['chrom', 'pos', 'DomainName'])
-
-with open(input_file_path, 'r') as input_file:
-    header = next(input_file).rstrip('\n')
-
-    for line in input_file:
-        fields = line.rstrip('\n').split("\t")
-        chrom, pos = fields[0], int(fields[1])
-
-        # Merge domain information based on the chromosome
-        merged_df = pd.merge_asof(result_df, domains_df[domains_df['chrom'] == chrom].sort_values('start'),
-                                  left_on='pos', right_on='start', direction='forward')
-
-        # Check if the position is within the domain range
-        mask = (pos >= merged_df['start']) & (pos <= merged_df['stop'])
-
-        # Update the 'DomainName' column with the domain name or 'NA'
-        merged_df.loc[mask, 'DomainName'] = merged_df.loc[mask, 'name']
-
-        # Append the current line's data to the result DataFrame
-        result_df = pd.concat([result_df, pd.DataFrame({'chrom': [chrom], 'pos': [pos], 'DomainName': ['NA']})])
-
-# Print or further process the result DataFrame                                                                                                                                                                                                                                                                                                                                                                                                                
-print(result_df)
