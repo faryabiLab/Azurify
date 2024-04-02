@@ -43,27 +43,22 @@ Documentation
 Link to or include documentation for the project. This can be in the form of inline comments in the code, a separate documentation file, or a link to an external documentation site.
 Contributing
 
-Provide guidelines for others who want to contribute to your project. Include information on how to report issues, how to propose new features, and the contribution workflow.
-License
 
-Specify the license under which your project is distributed. Common choices include MIT, Apache, GPL, etc.
 
 ## License
+Azurify classifies the pathogencity of small genomic variants using 
+predictive machine learning through clinically relevant features.
+Copyright (C) 2024  Ashkan Bigdeli
 
-    <one line to give the program's name and a brief idea of what it does.>
-    Azurify classifies the pathogencity of small genomic variants using 
-    predictive machine learning through clinically relevant features.
-    Copyright (C) 2024  Ashkan Bigdeli
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version. 
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version. 
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    [GNU General Public License](https://www.gnu.org/licenses/) for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+[GNU General Public License](https://www.gnu.org/licenses/) for more details.
 
 ## Author
 Please direct questions and bug reports to Ashkan Bigdeli ashkan.bigdeli@pennmedicine.upenn.edu
