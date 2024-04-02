@@ -12,7 +12,7 @@
 
 Azurify aims to classify the pathogencity of small genomic variants by leveraging machine learning on a feature set of resources that can be used in the clinical classification of somatic variants for the purpose of cancer precision mediicine. 
 
-Azurify aggregates data from CiVIC, ClinVar, gnomAD, COSMIC, KEGG, Pubmed and Uniprot to create a feature set that is combined with over 15,000 clinical classifications to create a model that can classify small variants (SNVs & Indels < 50bp).
+Azurify aggregates data from CiVIC, ClinVar, gnomAD, COSMIC, KEGG, PubMed, Uniprot and over 15,000 clinical classifications to create a model that can determinee the pathogencity of small genomic variants (SNVs & Indels < 50bp).
 The output classes being pathogenic, Likely pathogenic, uncertain significance (VUS), likely benign, and benign. 
 
 ## Installation
@@ -28,7 +28,7 @@ python setup.py
 ```
 python azurify.py -i /path/to/input.tsv -o /path/to/output.tsv
 ```
-Azurify expects the following columns as input: CHROM, POS, REF, ALT, FAF, GENE, PCHANGE, EFFECT, EXON_Rank. All values can be derived when annotating a VCF with [snpEff](https://pcingola.github.io/SnpEff/snpeff/introduction/), but native VCF/TSV support for bed-like files is to be released shortly.
+Azurify expects the following columns as input: CHROM, POS, REF, ALT, FAF, GENE, PCHANGE, EFFECT, EXON_Rank. All values can be derived when annotating a VCF with [snpEff](https://pcingola.github.io/SnpEff/snpeff/introduction/). VCF and hg38 support are scheduled for the next release. Currently Azurify works using hg19 locations.
 
 Example Input:
 
