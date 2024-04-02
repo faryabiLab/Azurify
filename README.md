@@ -48,7 +48,7 @@ License
 
 Specify the license under which your project is distributed. Common choices include MIT, Apache, GPL, etc.
 
-##License
+## License
 
     <one line to give the program's name and a brief idea of what it does.>
     Azurify classifies the pathogencity of small genomic variants using 
@@ -65,5 +65,5 @@ Specify the license under which your project is distributed. Common choices incl
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     [GNU General Public License](https://www.gnu.org/licenses/) for more details.
 
-##Author
+## Author
 Please direct questions and bug reports to Ashkan Bigdeli ashkan.bigdeli@pennmedicine.upenn.edu
