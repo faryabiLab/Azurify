@@ -10,11 +10,9 @@
                                   |___/ 
 ```
 
-A brief and catchy title that describes the purpose of the project.
-Description
+Azurify aims to classify the pathogencity of small genomic variants by leveraging machine learning on a feature set of resources that can be used in the clinical classification of somatic variants for the purpose of cancer precision mediicine. 
 
-A more detailed explanation of what the project does. Include the problem it solves, its features, and any relevant background information.
-Table of Contents
+Azurify aggregates data from CiVIC, ClinVar, gnomAD, COSMIC, KEGG, Pubmed and Uniprot to create a feature set that is combined with over 15,000 clinical classifications to create a model that can classify small variants as being either pathogenic, Likely pathogenic, uncertain significance, likely benign, and benign. In addition to the standalone code, we have included all of the code used to develop as well as evlaute in an effort to ease the accesiblity of variant classification across the field. As the Azurify project expands we hope to include more resources as features, automate model generation to keep pace with the field and generate disease specific models. We would also love to include training data beyond the borders of our instituion and seek to provide a framework where variant classification models can be shared to mitigate variability, so collaborators and contributors are encouraged to reach out. 
 
     Installation
     Usage
@@ -22,10 +20,14 @@ Table of Contents
     Contributing
     License
 
-Installation
+## Installation
 
-Provide instructions on how to install the project. Include any dependencies and their installation commands.
-
+Installation of Azurify and its dependencies are made easy and can be found within the setup.py file. Any dependencies associated with model and figure generation are outside of Azurify and will need to be installed manually.
+```
+git clone https://github.com/faryabiLab/Azurify.git
+cd Azurify
+python setup.py
+```
 bash
 
 pip install -r requirements.txt
