@@ -26,7 +26,7 @@ python setup.py
 ## Usage
 
 ```
-python azurify.py -i /path/to/input.tsv -o /path/to/output.tsv
+python azurify.py -i /path/to/example_input.txt -o /path/to/example_output.txt
 ```
 Azurify expects the following columns as input: CHROM, POS, REF, ALT, FAF, GENE, PCHANGE, EFFECT, EXON_Rank. All values can be derived when annotating a VCF with [snpEff](https://pcingola.github.io/SnpEff/snpeff/introduction/). VCF and hg38 support are scheduled for the next release. Currently Azurify works using hg19 locations.
 
