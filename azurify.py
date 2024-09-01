@@ -22,10 +22,11 @@ def add_domain(df):
     domain_file_path = os.path.join(cwd, 'utils/uniprot_hg19_domain_parsed.txt')
     domains_df = pd.read_csv(domain_file_path, sep='\t', header=None, names=['CHROM', 'START', 'STOP', 'Domain'], dtype={'CHROM': str, 'START': int, 'STOP': int, 'Domain': str})
 
-    # Merge based on chromosome and then intersect loci and update dataframe with the appropriate domain
+    # # Merge based on chromosome and then intersect loci and update dataframe with the appropriate domain
     merged_df = pd.merge(df, domains_df, on='CHROM', how='left')
     mask = (merged_df['POS'] >= merged_df['START']) & (merged_df['POS'] <= merged_df['STOP'])
     df.loc[mask, 'Domain'] = merged_df.loc[mask, 'Domain']
+
     return(df)
 
 def add_litvar(df):
@@ -48,11 +49,12 @@ def add_kegg(df):
 def merge_keys(df):
     utilp = os.path.join(cwd, 'utils')
 
+    df['KEY'] = df['CHROM'] + ':' + df['POS'].astype(str) + ':' + df['REF'] + ':' + df['ALT']
+
     for filename in os.listdir(utilp):
         if filename.endswith('_key.tsv.gz'):
             k = pd.read_csv((os.path.join(utilp, filename)), sep='\t',low_memory=False)
-            k.set_index("KEY", inplace = True)
-            df = df.join(k)
+            df = df.merge(k, on='KEY', how='left')
             progress_bar.update(10)
     return(df)
 
@@ -65,7 +67,8 @@ def run_azurify(df):
     df = df.infer_objects(copy=False).fillna('-999')
 
     pred = azurify.predict(data=df)[:,0]
-    return(pred)
+    prob = azurify.predict_proba(X=df)
+    return(pred, prob)
 
 def print_ascii():
     print(r"""
@@ -78,7 +81,7 @@ def print_ascii():
                                    __/ |
                                   |___/ 
           """)
-    print("\nVersion 0.99")
+    print("\nVersion 0.9.9")
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Azurify classifies the pathogencity of small variants based on clinical training labels.")
@@ -123,11 +126,23 @@ def main():
 
 
     #run model
-    preds = run_azurify(mdf)
+    preds, prob = run_azurify(mdf)
 
     mdf['Pathogenicity'] = preds
+    mdf['BP'] = prob[:,0]
+    mdf['PP'] = prob[:,1]
+    mdf['LBP'] = prob[:,2]
+    mdf['LPP'] = prob[:,3]
+    mdf['VP'] = prob[:,4]
 
     final = pd.concat([mdf, xdf], axis=1)
+
+    #final = final.drop(['KEY'], axis=1)
+
+    #replace to standard ACMG nomenclature
+    final['Pathogenicity'] = final['Pathogenicity'].astype(str).str.replace('Disease Associated', 'Pathogenic')
+    final['Pathogenicity'] = final['Pathogenicity'].astype(str).str.replace('VOUS', 'VUS')
+    final['Pathogenicity'] = final['Pathogenicity'].astype(str).str.replace('Probably DA', 'Likely Pathogenic')
 
     final.to_csv(out_file, sep="\t", index=False)
     progress_bar.update(19)
