@@ -1,9 +1,12 @@
-import pandas as pd
-import argparse
-from catboost import CatBoostClassifier
 import os
-from datetime import datetime
+import argparse
+import subprocess
+from collections import OrderedDict
 from tqdm import tqdm
+import pandas as pd
+from catboost import CatBoostClassifier
+from liftover import get_lifter
+
 
 #global get working directory
 cwd = os.getcwd()
@@ -17,6 +20,61 @@ def split_df(df, in_cols):
     excluded_columns = [col for col in df.columns if col not in in_cols]
     excluded_df = df[excluded_columns]
     return included_df, excluded_df
+
+def convert38(input_file, output_file):
+    converter = get_lifter('hg38', 'hg19', one_based=True)
+    with open(input_file, 'r') as f:
+        lines = f.readlines()
+
+    processed_lines = [lines[0]] 
+    for line in lines[1:]:
+        values = line.strip().split('\t')
+        chrom, pos = values[:2]
+        try:
+            x = converter.query(chrom, int(pos))[0]
+        except IndexError:
+            continue
+        values[0], values[1] = x[0], str(x[1])
+        processed_lines.append('\t'.join(values))
+
+    with open(output_file, 'w') as f:
+        for line in processed_lines:
+            f.write(line + '\n')
+
+    return open(output_file)
+
+def run_snpeff(snpeff_jar_path, input_file, output_file): 
+    snpeff_command = f"java -jar {snpeff_jar_path} -canon hg19 {input_file} > {output_file}"
+    
+    subprocess.run(snpeff_command, shell=True, check=True)
+    
+    return output_file
+
+def format_annotations(input_file, output_file):
+    with open(input_file, 'r') as anno_in, open(output_file, 'w') as anno_out:
+        annod = OrderedDict.fromkeys(['CHROM', 'POS', 'REF', 'ALT', 'FAF', 'GENE', 'PCHANGE', 'EFFECT', 'EXON_Rank'])
+        anno_out.write('\t'.join(annod.keys()) + '\n')
+
+        for line in anno_in:
+            if line.startswith('##') or line.startswith('#'):
+                continue
+            values = line.strip().split('\t')
+            annod['CHROM'] = 'chr' + str(values[0])
+            annod['POS'] = values[1]
+            annod['REF'] = values[3]
+            annod['ALT'] = values[4]
+            annod['FAF'] = values[5]
+
+            sample_ann = values[7]
+            anns = sample_ann.split(';')[1].split('|')
+            annod['EFFECT'] = anns[1]
+            annod['GENE'] = anns[3]
+            annod['EXON_Rank'] = anns[8].split('/')[0]
+            annod['PCHANGE'] = anns[10]
+
+            anno_out.write('\t'.join(annod.values()) + '\n')
+    
+    return output_file
 
 def add_domain(df):
     domain_file_path = os.path.join(cwd, 'utils/uniprot_hg19_domain_parsed.txt')
@@ -58,9 +116,12 @@ def merge_keys(df):
             progress_bar.update(10)
     return(df)
 
-def run_azurify(df):
+def run_azurify(df, drug_targets):
     azurify = CatBoostClassifier()
-    azurify.load_model((os.path.join(cwd,'models/azurify_hg19.0.99.json')), format='json')
+    if drug_targets:
+        azurify.load_model((os.path.join(cwd,'models/azurify_hg19.0.99.json')), format='json')
+    else:
+        azurify.load_model((os.path.join(cwd,'models/azurify_no_drug_hg19.0.99.json')), format='json')
     
     template_az = pd.read_csv((os.path.join(cwd ,'models/azurify_template.txt')), sep='\t')
     df = df[template_az.columns]
@@ -88,7 +149,9 @@ def parse_arguments():
     parser.add_argument("-l", "--litvar", action="store_true", required=False, help="Should we ping LitVar to pull publications. Takes 1 second per ping")
     parser.add_argument("-i", "--input_file", metavar="FILE_PATH", required=False, type=str, help="Specify the input file.")
     parser.add_argument("-o", "--output_filename", metavar="OUTPUT_FILENAME", required=False,type=str, help="Specify the output filename.")
-
+    parser.add_argument("-g", "--geneom_build", metavar="GENOME_BUILD", required=False, type=str, help="Specify the input genome, i.e hg19 or hg38.")
+    parser.add_argument("-s", "--snpeff_jar_path", metavar="SNPEFF_JAR_PATH", required=True, type=str, help="Specify the path to the snpeff jar file.")
+    parser.add_argument("-d", "--no_drug_targets", metavar="Drug Targets", required=False, type=str, help="Omit the use of drug targets in the model.")  
     # Parse the command-line arguments
     args = parser.parse_args()
 
@@ -98,15 +161,35 @@ def parse_arguments():
     return args
 
 def main():
-    # Example usage
     print_ascii()
     progress_bar.update(1)
+
     #grab args and files
     args = parse_arguments()
     out_file = args.output_filename
     uin = args.input_file
     udf = pd.read_csv(uin, sep='\t',low_memory=False)
-    progress_bar.update(9)
+    progress_bar.update(5)
+
+    #get output directory for intermediate files
+    directory = os.path.dirname(out_file)
+    filename = os.path.basename(out_file)
+    name, ext = os.path.splitext(filename)
+
+    #convert to hg19 if required
+    if args.geneom_build == 'hg38':
+        o19 = f"{name}{"hg19"}{ext}"
+        uin = convert38(uin, o19)
+        progress_bar.update(7)
+
+    #run snpeff
+    if args.snpeff_jar_path:
+        so = f"{name}{"snpeff"}{ext}"
+        az_in = run_snpeff(args.snpeff_jar_path, o19, so)
+        progress_bar.update(9)
+
+    
+    udf = pd.read_csv(az_in, sep='\t',low_memory=False)
 
 
     #split the df into columns used/not used by model
@@ -126,7 +209,10 @@ def main():
 
 
     #run model
-    preds, prob = run_azurify(mdf)
+    if args.no_drug_targets:
+        preds, prob = run_azurify(mdf, False)
+    else:
+        preds, prob = run_azurify(mdf, True)
 
     mdf['Pathogenicity'] = preds
     mdf['BP'] = prob[:,0]
@@ -137,7 +223,7 @@ def main():
 
     final = pd.concat([mdf, xdf], axis=1)
 
-    #final = final.drop(['KEY'], axis=1)
+    final = final.drop(['KEY'], axis=1)
 
     #replace to standard ACMG nomenclature
     final['Pathogenicity'] = final['Pathogenicity'].astype(str).str.replace('Disease Associated', 'Pathogenic')
