@@ -55,7 +55,7 @@ In addition to Azurify, we have provided all of the code used to develop as well
 
 As the Azurify project expands we hope to include more resources as features, automate model generation to keep pace with the field, and generate disease specific models.
 
-We would also love to include training data beyond the borders of our instituion and seek to provide a framework where variant classification models can be shared to mitigate variability, so collaborators and contributors are encouraged to reach out. 
+We would also love to include training data beyond the borders of our institution and seek to provide a framework where variant classification models can be shared to mitigate variability, so collaborators and contributors are encouraged to reach out. 
 
 ## License
 Azurify classifies the pathogencity of small genomic variants using 
