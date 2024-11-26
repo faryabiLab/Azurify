@@ -1,6 +1,7 @@
 import os
 import argparse
 import subprocess
+import glob
 from collections import OrderedDict
 from tqdm import tqdm
 import pandas as pd
@@ -11,8 +12,6 @@ from liftover import get_lifter
 #global get working directory
 cwd = os.getcwd()
 
-#global progress bar
-progress_bar = tqdm(total=100, desc="Progress", unit="iter")
 
 
 def split_df(df, in_cols):
@@ -24,7 +23,7 @@ def split_df(df, in_cols):
 def convert38(input_file, output_file):
     converter = get_lifter('hg38', 'hg19', one_based=True)
     with open(input_file, 'r') as f:
-        lines = f.readlines()
+        lines = f.readlines()[1:]
 
     processed_lines = [lines[0]] 
     for line in lines[1:]:
@@ -41,7 +40,7 @@ def convert38(input_file, output_file):
         for line in processed_lines:
             f.write(line + '\n')
 
-    return open(output_file)
+    return output_file
 
 def run_snpeff(snpeff_jar_path, input_file, output_file): 
     snpeff_command = f"java -jar {snpeff_jar_path} -canon hg19 {input_file} > {output_file}"
@@ -56,17 +55,23 @@ def format_annotations(input_file, output_file):
         anno_out.write('\t'.join(annod.keys()) + '\n')
 
         for line in anno_in:
-            if line.startswith('##') or line.startswith('#'):
+            if line.startswith('##') or line.startswith('#') or line.startswith('CHROM'):
                 continue
             values = line.strip().split('\t')
-            annod['CHROM'] = 'chr' + str(values[0])
+            annod['CHROM'] = values[0]
             annod['POS'] = values[1]
             annod['REF'] = values[3]
             annod['ALT'] = values[4]
+            if values[4] == '*': #snpeff won't annotate these so move on
+                continue
             annod['FAF'] = values[5]
 
             sample_ann = values[7]
-            anns = sample_ann.split(';')[1].split('|')
+            try:
+                anns = sample_ann.split('=')[1].split('|')
+            except:
+                print(sample_ann)
+                continue
             annod['EFFECT'] = anns[1]
             annod['GENE'] = anns[3]
             annod['EXON_Rank'] = anns[8].split('/')[0]
@@ -85,6 +90,8 @@ def add_domain(df):
     mask = (merged_df['POS'] >= merged_df['START']) & (merged_df['POS'] <= merged_df['STOP'])
     df.loc[mask, 'Domain'] = merged_df.loc[mask, 'Domain']
 
+   # df.to_csv('/home/ec2-user/Azurify/results/domain.tsv',sep='\t', index=False)
+
     return(df)
 
 def add_litvar(df):
@@ -92,6 +99,7 @@ def add_litvar(df):
     litvar_df = pd.read_csv(litvar_file_path, sep='\t', header=None, names=['PCHANGE', 'PMID_COUNT'], dtype={'PCHANGE': str, 'PMID_COUNT': int})
 
     merged_df = pd.merge(df, litvar_df, on="PCHANGE", how='left')
+   # df.to_csv('/home/ec2-user/Azurify/results/litvar.tsv',sep='\t', index=False)
     return(merged_df)
 
 def add_kegg(df):
@@ -102,18 +110,32 @@ def add_kegg(df):
     plus_kegg = pd.merge(df,kegg_df[['GENE', 'IN_KEGG']],on='GENE', how='left')
     plus_kegg["KEGG"] = plus_kegg['IN_KEGG'].isnull()*1
     plus_kegg = plus_kegg.drop(['IN_KEGG'], axis=1)
+   # plus_kegg.to_csv('/home/ec2-user/Azurify/results/kegg.tsv',sep='\t', index=False)
     return(plus_kegg)
+
+def add_mvp(df):
+    utilp = os.path.join(cwd, 'utils')
+    df['KEY'] = df['CHROM'] + ':' + df['POS'].astype(str) + ':' + df['REF'] + ':' + df['ALT']
+
+    for filename in os.listdir(utilp):
+        if filename.startswith('mvp'):
+            files = glob.glob(os.path.join(utilp, "mvp*"))
+            mvp = [pd.read_csv(f, sep="\t", low_memory=False) for f in files]
+            k = pd.concat(mvp,ignore_index=True)
+            df = df.merge(k, on='KEY', how='left')
+            break
+   # df.to_csv('/home/ec2-user/Azurify/results/mvp.tsv',sep='\t', index=False)
+    return(df)
+
 
 def merge_keys(df):
     utilp = os.path.join(cwd, 'utils')
-
     df['KEY'] = df['CHROM'] + ':' + df['POS'].astype(str) + ':' + df['REF'] + ':' + df['ALT']
 
     for filename in os.listdir(utilp):
         if filename.endswith('_key.tsv.gz'):
             k = pd.read_csv((os.path.join(utilp, filename)), sep='\t',low_memory=False)
             df = df.merge(k, on='KEY', how='left')
-            progress_bar.update(10)
     return(df)
 
 def run_azurify(df, drug_targets):
@@ -146,9 +168,8 @@ def print_ascii():
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Azurify classifies the pathogencity of small variants based on clinical training labels.")
-    parser.add_argument("-l", "--litvar", action="store_true", required=False, help="Should we ping LitVar to pull publications. Takes 1 second per ping")
     parser.add_argument("-i", "--input_file", metavar="FILE_PATH", required=False, type=str, help="Specify the input file.")
-    parser.add_argument("-o", "--output_filename", metavar="OUTPUT_FILENAME", required=False,type=str, help="Specify the output filename.")
+    parser.add_argument("-o", "--output_directory", metavar="OUTPUT_DIRECTORY", required=False,type=str, help="Specify where the output and intermediate files should be written.")
     parser.add_argument("-g", "--geneom_build", metavar="GENOME_BUILD", required=False, type=str, help="Specify the input genome, i.e hg19 or hg38.")
     parser.add_argument("-s", "--snpeff_jar_path", metavar="SNPEFF_JAR_PATH", required=True, type=str, help="Specify the path to the snpeff jar file.")
     parser.add_argument("-d", "--no_drug_targets", metavar="Drug Targets", required=False, type=str, help="Omit the use of drug targets in the model.")  
@@ -156,57 +177,68 @@ def parse_arguments():
     args = parser.parse_args()
 
     # Check for required arguments
-    if not args.input_file or not args.output_filename:
-        parser.error("Input file and Output file are required. Ex. Usage: python azurify.py -i /path/input.tsv -o /path/output.ts")
+    if not args.input_file or not args.output_directory:
+        parser.error("Input file and Output Directory are required. Ex. Usage: python azurify.py -i /path/input.tsv -o /path/output/")
     return args
 
 def main():
     print_ascii()
-    progress_bar.update(1)
+
+    #global progress bar
+    progress_bar = tqdm(total=100, desc="Progress", unit="iter")
 
     #grab args and files
     args = parse_arguments()
-    out_file = args.output_filename
+    out_dir = args.output_directory
     uin = args.input_file
     udf = pd.read_csv(uin, sep='\t',low_memory=False)
     progress_bar.update(5)
 
-    #get output directory for intermediate files
-    directory = os.path.dirname(out_file)
-    filename = os.path.basename(out_file)
-    name, ext = os.path.splitext(filename)
 
-    #convert to hg19 if required
-    if args.geneom_build == 'hg38':
-        o19 = f"{name}{"hg19"}{ext}"
-        uin = convert38(uin, o19)
-        progress_bar.update(7)
-
-    #run snpeff
-    if args.snpeff_jar_path:
-        so = f"{name}{"snpeff"}{ext}"
-        az_in = run_snpeff(args.snpeff_jar_path, o19, so)
-        progress_bar.update(9)
-
-    
-    udf = pd.read_csv(az_in, sep='\t',low_memory=False)
+    #set up directory and naming
+    os.makedirs(out_dir, exist_ok=True)
+    prefix = uin.split('.')[0]
 
 
     #split the df into columns used/not used by model
-    in_cols=['CHROM','POS','REF','ALT','FAF','GENE','PCHANGE','EFFECT', 'EXON_Rank']
+    in_cols=['CHROM','START','STOP','REF','ALT','VAF']
     adf, xdf = split_df(udf, in_cols)
 
+    #convert to hg19 if required
+    if args.geneom_build == 'hg38':
+        o19 = os.path.join(out_dir, (prefix + ".hg19.txt"))
+        uin = convert38(uin, o19)
+        progress_bar.update(5)
+
+    #run snpeff
+    so = os.path.join(out_dir, (prefix + ".snpeffhg19.txt"))
+    format_in = run_snpeff(args.snpeff_jar_path, uin, so)
+    progress_bar.update(10)
+     
+    #format output
+    format_out = os.path.join(out_dir, (prefix + ".snpeff.hg19.az_format.tsv"))
+    az_in = format_annotations(format_in, format_out)
+
+    
+    ddf = pd.read_csv(az_in, sep='\t',low_memory=False)
+
+
+    #split the df into columns used/not used by model
+   # in_cols=['CHROM','POS','REF','ALT','FAF','GENE','PCHANGE','EFFECT', 'EXON_Rank']
+   # adf, xdf = split_df(udf, in_cols)
+
     #add features
-    ddf = add_domain(adf)
+    ddf = add_domain(ddf)
     progress_bar.update(10)
     kdf = add_kegg(ddf)
     progress_bar.update(10)
     ldf = add_litvar(kdf)
     progress_bar.update(10)
+    mvf =add_mvp(ldf)
 
-    #add keyed feeatures
-    mdf = merge_keys(ldf)
-
+    #add key feeatures
+    mdf = merge_keys(mvf)
+    progress_bar.update(20)
 
     #run model
     if args.no_drug_targets:
@@ -220,18 +252,22 @@ def main():
     mdf['LBP'] = prob[:,2]
     mdf['LPP'] = prob[:,3]
     mdf['VP'] = prob[:,4]
+    mdf = mdf.round({'BP': 5,'PP': 5,'LBP': 5, 'LPP': 5, 'VP': 5})
 
+    progress_bar.update(20)
     final = pd.concat([mdf, xdf], axis=1)
 
     final = final.drop(['KEY'], axis=1)
 
-    #replace to standard ACMG nomenclature
+    #replace to standard nomenclature
+    final = final.rename(columns={'FAF': 'VAF'})
     final['Pathogenicity'] = final['Pathogenicity'].astype(str).str.replace('Disease Associated', 'Pathogenic')
     final['Pathogenicity'] = final['Pathogenicity'].astype(str).str.replace('VOUS', 'VUS')
     final['Pathogenicity'] = final['Pathogenicity'].astype(str).str.replace('Probably DA', 'Likely Pathogenic')
 
+    out_file = os.path.join(out_dir, (prefix + ".azurify.tsv"))
     final.to_csv(out_file, sep="\t", index=False)
-    progress_bar.update(19)
+    progress_bar.update(10)
     progress_bar.close()
 
     print("Classifications Complete, results written to: " + out_file)
