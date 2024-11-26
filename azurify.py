@@ -62,16 +62,10 @@ def format_annotations(input_file, output_file):
             annod['POS'] = values[1]
             annod['REF'] = values[3]
             annod['ALT'] = values[4]
-            if values[4] == '*': #snpeff won't annotate these so move on
-                continue
             annod['FAF'] = values[5]
 
             sample_ann = values[7]
-            try:
-                anns = sample_ann.split('=')[1].split('|')
-            except:
-                print(sample_ann)
-                continue
+            anns = sample_ann.split('=')[1].split('|')
             annod['EFFECT'] = anns[1]
             annod['GENE'] = anns[3]
             annod['EXON_Rank'] = anns[8].split('/')[0]
@@ -90,8 +84,6 @@ def add_domain(df):
     mask = (merged_df['POS'] >= merged_df['START']) & (merged_df['POS'] <= merged_df['STOP'])
     df.loc[mask, 'Domain'] = merged_df.loc[mask, 'Domain']
 
-   # df.to_csv('/home/ec2-user/Azurify/results/domain.tsv',sep='\t', index=False)
-
     return(df)
 
 def add_litvar(df):
@@ -99,7 +91,6 @@ def add_litvar(df):
     litvar_df = pd.read_csv(litvar_file_path, sep='\t', header=None, names=['PCHANGE', 'PMID_COUNT'], dtype={'PCHANGE': str, 'PMID_COUNT': int})
 
     merged_df = pd.merge(df, litvar_df, on="PCHANGE", how='left')
-   # df.to_csv('/home/ec2-user/Azurify/results/litvar.tsv',sep='\t', index=False)
     return(merged_df)
 
 def add_kegg(df):
@@ -110,7 +101,6 @@ def add_kegg(df):
     plus_kegg = pd.merge(df,kegg_df[['GENE', 'IN_KEGG']],on='GENE', how='left')
     plus_kegg["KEGG"] = plus_kegg['IN_KEGG'].isnull()*1
     plus_kegg = plus_kegg.drop(['IN_KEGG'], axis=1)
-   # plus_kegg.to_csv('/home/ec2-user/Azurify/results/kegg.tsv',sep='\t', index=False)
     return(plus_kegg)
 
 def add_mvp(df):
@@ -124,7 +114,6 @@ def add_mvp(df):
             k = pd.concat(mvp,ignore_index=True)
             df = df.merge(k, on='KEY', how='left')
             break
-   # df.to_csv('/home/ec2-user/Azurify/results/mvp.tsv',sep='\t', index=False)
     return(df)
 
 
@@ -222,10 +211,6 @@ def main():
     
     ddf = pd.read_csv(az_in, sep='\t',low_memory=False)
 
-
-    #split the df into columns used/not used by model
-   # in_cols=['CHROM','POS','REF','ALT','FAF','GENE','PCHANGE','EFFECT', 'EXON_Rank']
-   # adf, xdf = split_df(udf, in_cols)
 
     #add features
     ddf = add_domain(ddf)
